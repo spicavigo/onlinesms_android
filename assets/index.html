@@ -1,0 +1,47 @@
+<!DOCTYPE html> 
+<html> 
+<head> 
+    <title>My Page</title> 
+    <meta name="viewport" content="width=device-width, initial-scale=1"> 
+    <link rel="stylesheet" href="file:///android_asset/css/jquery.mobile.css" />
+    <script src="file:///android_asset/js/jquery.js"></script>
+    <script src="file:///android_asset/js/jquery.mobile.js"></script>
+    <style>
+        .ui-li.ui-li-static.ui-btn-up-c.ui-li-desc{
+            white-space: normal;
+        }
+    </style>
+</head> 
+<body> 
+
+<div data-role="page" id="register">
+    <div data-position="fixed" data-role="header" data-theme="b">
+        <h1>Login</h1>
+    </div>
+    <div align="center" data-role="content" id="contentConfirmation" name="contentConfirmation">
+        <h1></h1>
+        <h2></h2>
+        <ul id="account-list">
+        </ul>
+    </div>
+</div>
+
+<div id="stats-page" data-role="page">
+    <div data-position="fixed" data-role="header" data-theme="b">
+        <h1>Done!</h1>
+    </div>
+    <div align="center" data-role="content">
+        <h1></h1>
+        <h3>Congratulations! You are registered now.</h3>
+        <h4>To start sending sms, do the following.</h4>
+        <ul data-role="listview" class="ui-listview">
+                <li class="ui-li ui-li-static ui-btn-up-c ui-first-child ui-li-desc">Visit http://sms.fauzism.com/</li>
+                <li class="ui-li ui-li-static ui-btn-up-c ui-li-desc">Login using the Google Account you have used to register here</li>
+                <li class="ui-li ui-li-static ui-btn-up-c ui-li-desc">Send SMS :)</li>
+         </ul>
+    </div>
+</div>
+<script src="file:///android_asset/js/cookies.js"></script>
+<script src="file:///android_asset/js/register.js"></script>
+</body>
+</html>
