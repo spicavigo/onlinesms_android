@@ -12,7 +12,7 @@ var registered = false;
 function register_device_token(token){
 	if(registered){
 		$.mobile.loading( 'hide');
- 	   $.mobile.changePage($('#stats-page'), { transition: "none"});
+ 	    $.mobile.changePage($('#stats-page'), { transition: "none"});
 	}
 	if (Get_Cookie("email")){
 		$.ajax({

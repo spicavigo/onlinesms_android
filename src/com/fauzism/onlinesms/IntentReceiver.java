@@ -42,7 +42,6 @@ public class IntentReceiver extends BroadcastReceiver {
             			Thread.sleep(1000);
             			email = prefs.getString("email", "");
             		}
-    				//MainActivity.engine.loadUrl("javascript: register_device_token('"+ intent.getStringExtra(PushManager.EXTRA_APID) +"')");
     				FetchURL task = new FetchURL();
                     task.execute(new String[] { "http://fzsmsonline.appspot.com/push_register/?email="+email+"&apid="+intent.getStringExtra(PushManager.EXTRA_APID) });
                     Log.d(logTag, "http://fzsmsonline.appspot.com/push_register/?email="+email+"&apid="+intent.getStringExtra(PushManager.EXTRA_APID));
@@ -85,23 +84,37 @@ public class IntentReceiver extends BroadcastReceiver {
     private void send_sms(Intent intent) {
     		String phone = intent.getStringExtra("phone");
     		String msg = intent.getStringExtra("msg");
-        		SmsManager sms = SmsManager.getDefault();
-        	    sms.sendTextMessage(phone, null, msg, null, null);
+    		SmsManager sms = SmsManager.getDefault();
+    		if(msg.length()>160){
+    			int start=0;
+    			while (start < msg.length()){
+    				String str1 = msg.substring(start, start+160>msg.length()?msg.length():start+160);
+    				sms.sendTextMessage(phone, null, str1, null, null);
+    				start+=160;
+    				Log.i(logTag, "Sent: " + str1);
+    			}
+    		} else {
+    			sms.sendTextMessage(phone, null, msg, null, null);
+    		}
+        	String msgid = intent.getStringExtra("msgid");
+        	FetchURL task = new FetchURL();
+            task.execute(new String[] { "http://fzsmsonline.appspot.com/delivery/?msgid="+msgid+"&sent=true" });
+            
         	    
-                Set<String> keys = intent.getExtras().keySet();
-                for (String key : keys) {
+            Set<String> keys = intent.getExtras().keySet();
+            for (String key : keys) {
  
-                        //ignore standard extra keys (GCM + UA)
-                    List<String> ignoredKeys = (List<String>)Arrays.asList(
-                                    "collapse_key",//GCM collapse key
-                                    "from",//GCM sender
-                                    PushManager.EXTRA_NOTIFICATION_ID,//int id of generated notification (ACTION_PUSH_RECEIVED only)
-                                    PushManager.EXTRA_PUSH_ID,//internal UA push id
-                                    PushManager.EXTRA_ALERT);//ignore alert
-                    if (ignoredKeys.contains(key)) {
-                            continue;
-                    }
-                    Log.i(logTag, "Push Notification Extra: ["+key+" : " + intent.getStringExtra(key) + "]");
+                    //ignore standard extra keys (GCM + UA)
+                List<String> ignoredKeys = (List<String>)Arrays.asList(
+                                "collapse_key",//GCM collapse key
+                                "from",//GCM sender
+                                PushManager.EXTRA_NOTIFICATION_ID,//int id of generated notification (ACTION_PUSH_RECEIVED only)
+                                PushManager.EXTRA_PUSH_ID,//internal UA push id
+                                PushManager.EXTRA_ALERT);//ignore alert
+                if (ignoredKeys.contains(key)) {
+                        continue;
+                }
+                Log.i(logTag, "Push Notification Extra: ["+key+" : " + intent.getStringExtra(key) + "]");
             }
     }
     
