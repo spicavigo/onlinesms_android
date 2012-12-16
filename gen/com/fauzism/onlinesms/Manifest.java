@@ -10,7 +10,6 @@ package com.fauzism.onlinesms;
 public final class Manifest {
     public static final class permission {
         /**  This app has permission to register with GCM and receive message 
- MODIFICATION REQUIRED - Replace "com.urbanairship.push.sample" with your package name 
          */
         public static final String C2D_MESSAGE="com.fauzism.onlinesms.permission.C2D_MESSAGE";
     }

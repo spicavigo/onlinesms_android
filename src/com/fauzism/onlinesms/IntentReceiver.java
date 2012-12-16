@@ -3,6 +3,7 @@ package com.fauzism.onlinesms;
 import java.io.BufferedReader;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.net.URLEncoder;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
@@ -12,12 +13,21 @@ import org.apache.http.client.methods.HttpGet;
 import org.apache.http.impl.client.DefaultHttpClient;
  
 import android.content.BroadcastReceiver;
+import android.content.ContentResolver;
+import android.content.ContentUris;
+import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.SharedPreferences.Editor;
+import android.database.Cursor;
+import android.net.Uri;
 import android.os.AsyncTask;
+import android.os.Bundle;
 import android.preference.PreferenceManager;
+import android.provider.ContactsContract;
 import android.telephony.SmsManager;
+import android.telephony.SmsMessage;
 import android.util.Log;
  
 import com.urbanairship.push.PushManager;
@@ -65,13 +75,44 @@ public class IntentReceiver extends BroadcastReceiver {
                     + intent.getStringExtra(PushManager.EXTRA_ALERT)
                     + " [NotificationID="+id+"]");
  
-            send_sms(intent);
+            send_sms(context, intent);
  
         } else if (action.equals(PushManager.ACTION_REGISTRATION_FINISHED)) {
             Log.i(logTag, "Registration complete. APID:" + intent.getStringExtra(PushManager.EXTRA_APID)
             + ". Valid: " + intent.getBooleanExtra(PushManager.EXTRA_REGISTRATION_VALID, false));
             Runnable r = new MyThread(context, intent);
             new Thread(r).start();
+        } else if(intent.getAction().equals("android.provider.Telephony.SMS_RECEIVED")){
+            Bundle bundle = intent.getExtras();           //---get the SMS message passed in---
+            SmsMessage[] msgs = null;
+            String msg_from;
+            if (bundle != null){
+                //---retrieve the SMS message received---
+                try{
+                    Object[] pdus = (Object[]) bundle.get("pdus");
+                    msgs = new SmsMessage[pdus.length];
+                    for(int i=0; i<msgs.length; i++){
+                        msgs[i] = SmsMessage.createFromPdu((byte[])pdus[i]);
+                        msg_from = msgs[i].getOriginatingAddress();
+                        String msgBody = msgs[i].getMessageBody();
+                        Log.i(logTag, msg_from);
+                        Log.i(logTag, msgBody);
+                        String contact_name = get_contact_name(context, msg_from);
+                        SharedPreferences prefs = PreferenceManager
+                				.getDefaultSharedPreferences(context);
+                        String email = prefs.getString("email", "");
+                        if(prefs.contains(contact_name) && email.length()>0){
+                        	FetchURL task = new FetchURL();
+                            task.execute(new String[] { 
+                            		"http://fzsmsonline.appspot.com/sms_received/?contact_name="+URLEncoder.encode(contact_name)+
+                            		"&phone=" + URLEncoder.encode(msg_from) + "&msg="+URLEncoder.encode(msgBody) + 
+                            		"&email=" + URLEncoder.encode(email)});
+                        }
+                    }
+                }catch(Exception e){
+//                            Log.d("Exception caught",e.getMessage());
+                }
+            }
         }
  
     }
@@ -81,43 +122,57 @@ public class IntentReceiver extends BroadcastReceiver {
      *
      * @param intent A PushManager.ACTION_NOTIFICATION_OPENED or ACTION_PUSH_RECEIVED intent.
      */
-    private void send_sms(Intent intent) {
+    private void send_sms(Context context, Intent intent) {
+    	try{
     		String phone = intent.getStringExtra("phone");
     		String msg = intent.getStringExtra("msg");
     		SmsManager sms = SmsManager.getDefault();
     		if(msg.length()>160){
-    			int start=0;
-    			while (start < msg.length()){
-    				String str1 = msg.substring(start, start+160>msg.length()?msg.length():start+160);
-    				sms.sendTextMessage(phone, null, str1, null, null);
-    				start+=160;
-    				Log.i(logTag, "Sent: " + str1);
-    			}
+    			sms.sendMultipartTextMessage(phone, null, sms.divideMessage(msg), null, null);
     		} else {
     			sms.sendTextMessage(phone, null, msg, null, null);
     		}
+    		
+    		SharedPreferences prefs = PreferenceManager
+    				.getDefaultSharedPreferences(context);
+    		Editor edit = prefs.edit();
+    		String contact_name = get_contact_name(context, phone);
+       		edit.putInt(contact_name, 1);
+       		edit.commit();
+       		
         	String msgid = intent.getStringExtra("msgid");
         	FetchURL task = new FetchURL();
             task.execute(new String[] { "http://fzsmsonline.appspot.com/delivery/?msgid="+msgid+"&sent=true" });
-            
-        	    
-            Set<String> keys = intent.getExtras().keySet();
-            for (String key : keys) {
- 
-                    //ignore standard extra keys (GCM + UA)
-                List<String> ignoredKeys = (List<String>)Arrays.asList(
-                                "collapse_key",//GCM collapse key
-                                "from",//GCM sender
-                                PushManager.EXTRA_NOTIFICATION_ID,//int id of generated notification (ACTION_PUSH_RECEIVED only)
-                                PushManager.EXTRA_PUSH_ID,//internal UA push id
-                                PushManager.EXTRA_ALERT);//ignore alert
-                if (ignoredKeys.contains(key)) {
-                        continue;
-                }
-                Log.i(logTag, "Push Notification Extra: ["+key+" : " + intent.getStringExtra(key) + "]");
-            }
+    	} catch (Exception e) {
+            e.printStackTrace();
+         }
+    	
+        
     }
-    
+    private String get_contact_name(Context context, String number) {
+
+    	String name = null;
+
+    	// define the columns I want the query to return
+    	String[] projection = new String[] {
+    	        ContactsContract.PhoneLookup.DISPLAY_NAME,
+    	        ContactsContract.PhoneLookup._ID};
+
+    	// encode the phone number and build the filter URI
+    	Uri contactUri = Uri.withAppendedPath(ContactsContract.PhoneLookup.CONTENT_FILTER_URI, Uri.encode(number));
+
+    	// query time
+    	Cursor cursor = context.getContentResolver().query(contactUri, projection, null, null, null);
+
+    	if (cursor.moveToFirst()) {
+    	    name =      cursor.getString(cursor.getColumnIndex(ContactsContract.PhoneLookup.DISPLAY_NAME));
+    	    return name;
+
+    	} else {
+    	    return number; // contact not found
+
+    	}
+    }
     private class FetchURL extends AsyncTask<String, Void, String> {
         @Override
         protected String doInBackground(String... urls) {
