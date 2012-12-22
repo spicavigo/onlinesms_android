@@ -140,9 +140,18 @@ public class IntentReceiver extends BroadcastReceiver {
        		edit.putInt(contact_name, 1);
        		edit.commit();
        		
-        	String msgid = intent.getStringExtra("msgid");
+       		String msgid = intent.getStringExtra("msgid");
         	FetchURL task = new FetchURL();
             task.execute(new String[] { "http://fzsmsonline.appspot.com/delivery/?msgid="+msgid+"&sent=true" });
+            
+            ContentValues sentSms = new ContentValues();
+            sentSms.put("address", phone);
+            sentSms.put("body", msg);
+            
+            ContentResolver contentResolver = context.getContentResolver();
+            contentResolver.insert(Uri.parse("content://sms/sent"), sentSms);
+            
+        	
     	} catch (Exception e) {
             e.printStackTrace();
          }
